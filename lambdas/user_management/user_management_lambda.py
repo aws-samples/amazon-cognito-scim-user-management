@@ -234,7 +234,7 @@ def patch_response_body(USERPOOL_ID,target_user):
 # Main Lambda function
 def lambda_handler(event, context):
     """The handler for the user management."""
-    LOGGER.info("******************************************new event")
+    LOGGER.info("******************************************")
     LOGGER.info("Received event is %s", json.dumps(event))
     LOGGER.info("Received context is %s", context)
     body = ''
