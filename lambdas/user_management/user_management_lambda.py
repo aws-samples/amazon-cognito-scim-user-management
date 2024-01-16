@@ -258,7 +258,7 @@ def lambda_handler(event, context):
     if method == 'PATCH':
         target_user = find_target_user(USERPOOL_ID, event, body)
         
-        #update_cognito_user(USERPOOL_ID, body, target_user)
+        update_cognito_user(USERPOOL_ID, body, target_user)
         
         patch_response = patch_response_body(USERPOOL_ID,target_user)
         
