@@ -11,8 +11,7 @@ Metadata:
         Parameters:
           - AmazonCognitoUserPoolId
           - ApiKeyLength
-          - IdpType
-          - DefaultRoutingProfile
+
       - Label:
           default: "Artifact details for Lambda function provisioning"
         Parameters:
@@ -26,8 +25,6 @@ Metadata:
         default: "Enter your Amazon Cognito User Pool Id"
       ApiKeyLength:
         default: "Enter the length of the API key to be used for making SCIM calls"
-      IdpType:
-        default: "The Idptype for user management , allowed values OKTA , Azure"
       CodeBucket:
         default: "S3 bucket that contain the Lambda functions"
       UserManagementCodeObject:
@@ -36,8 +33,6 @@ Metadata:
         default: Zip file that contains the Lambda authorizer code.
       APIKeyGenerationCodeObject:
         default: Zip file that cotains the API Key for IDP Authorization Lambda code.
-      DefaultRoutingProfile:
-        default: The default routing profile that will be associated with the User provisioning
 
 Parameters:
   AmazonCognitoUserPoolId:
@@ -45,11 +40,6 @@ Parameters:
   ApiKeyLength:
     Type: Number
     Default: 32
-  IdpType:
-    Type: String
-    AllowedValues:
-      - OKTA
-      - AZURE
   CodeBucket:
     Type: String
   UserManagementCodeObject:
@@ -62,12 +52,6 @@ Parameters:
     Type: String
     Default: "Basic Routing Profile"
 
-Conditions:
-  IdpCondition: !Or
-    - !Equals [!Ref IdpType, "OKTA"]
-    - !Equals [!Ref IdpType, "AZURE"]
-  OktaCondition: !Equals [!Ref IdpType, "OKTA"]
-  AzureCondition: !Equals [!Ref IdpType, "AZURE"]
 
 ################# Create Lambda Function ##########################################
 Resources:
@@ -147,13 +131,22 @@ Resources:
       Type: TOKEN
 
   ################# Create API GW ##########################################
-  SCIMAPIProxyResourceV2:
+  SCIMAPIProxyResourceSCIM:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId:
         Fn::GetAtt:
           - SCIMProvisioningAPIGW
           - RootResourceId
+      PathPart: "v2"
+      RestApiId:
+        Ref: SCIMProvisioningAPIGW
+
+  SCIMAPIProxyResourceV2:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Ref: SCIMAPIProxyResourceSCIM
       PathPart: "v2"
       RestApiId:
         Ref: SCIMProvisioningAPIGW
@@ -490,9 +483,8 @@ Resources:
                 - lambda.amazonaws.com
 
 Outputs:
-  SCIMProvisioningOktaTenantURL:
-    Condition: OktaCondition
-    Description: "URL to enter in OKTA SCIM provisioning"
+  SCIMEndpoint:
+    Description: "SCIM Endpoint for IdPs"
     Value: !Join
       - ""
       - - "https://"
@@ -504,22 +496,7 @@ Outputs:
         - /
         - !Ref >-
           SCIMAPIStage
-        - /Users?filter=userName%20eq%20%22test.user
-  SCIMProvisioningAzureTenantURL:
-    Condition: AzureCondition
-    Description: "URL to enter in Azure SCIM provisioning"
-    Value: !Join
-      - ""
-      - - "https://"
-        - !Ref SCIMProvisioningAPIGW
-        - .execute-api.
-        - !Ref "AWS::Region"
-        - .
-        - !Ref "AWS::URLSuffix"
-        - /
-        - !Ref >-
-          SCIMAPIStage
-        - /scim/
+        - /scim/v2/
   IdPAPITokenSSMParameter:
     Description: The Parameter store that contains the IDP Authorization API Key
     Value: !Join
