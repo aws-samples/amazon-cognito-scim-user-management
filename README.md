@@ -1,6 +1,9 @@
 ## My Project
 
-TODO: Fill this README out!
+TODO: 
+- Project description
+- Architectural diagram
+- Limitations
 
 Be sure to:
 
