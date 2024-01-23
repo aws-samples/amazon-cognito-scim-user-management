@@ -224,7 +224,6 @@ def patch_response_body(USERPOOL_ID,target_user):
     meta_dict['resourceType'] = "User"
     meta_dict['created'] = datetime.strftime(user_info['Users'][0]['UserCreateDate'], '%Y-%m-%dT%H:%M:%SZ')
     meta_dict['lastModified'] =  datetime.strftime(user_info['Users'][0]['UserLastModifiedDate'], '%Y-%m-%dT%H:%M:%SZ')
-    meta_dict['location'] = 'placeholder'
     
     response += '"meta": ' + json.dumps(meta_dict) + '}'
 
