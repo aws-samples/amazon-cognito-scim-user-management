@@ -52,6 +52,7 @@ x-amzn-RequestId: 97d490ef-207d-4a3e-958b-f8a188a668be
 ```
 
 **Filters**
+
 The following filters are supported:
 - `username`
 - `email`
@@ -65,6 +66,7 @@ The following filters are supported:
 - `sub`
 
 **Filter example**
+
 `filter=<filterAttribute> eq "<filterValue>"`
 
 The following is an example request and response for filtering users:
