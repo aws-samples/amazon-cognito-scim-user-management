@@ -66,26 +66,26 @@ def get_cognito_user(USERPOOL_ID, event):
                 }
             return bad_filter
         
-        # If no filter provided, list all users
-        elif not query_filter:
-            LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
-            paginator = COGNITO_CLIENT.get_paginator('list_users')
-            paginated_user_list = paginator.paginate(
-                UserPoolId = USERPOOL_ID,
-                PaginationConfig={
-                    }
-                )
-        try:
-            for page in paginated_user_list:
-                    for user in page['Users']:
-                        if user['Username']:
-                            user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
-                            LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
-                                user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
-        except botocore.exceptions.ClientError as error:
-            LOGGER.error("Boto3 client error in user_management_lambda.py while getting Cognito user due to %s",
-                error.response['Error']['Code'])     # noqa: E501
-            raise error
+    # If no filter provided, list all users
+    elif not query_filter:
+        LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
+        paginator = COGNITO_CLIENT.get_paginator('list_users')
+        paginated_user_list = paginator.paginate(
+            UserPoolId = USERPOOL_ID,
+            PaginationConfig={
+                }
+            )
+    try:
+        for page in paginated_user_list:
+                for user in page['Users']:
+                    if user['Username']:
+                        user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
+                        LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
+                            user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
+    except botocore.exceptions.ClientError as error:
+        LOGGER.error("Boto3 client error in user_management_lambda.py while getting Cognito user due to %s",
+            error.response['Error']['Code'])     # noqa: E501
+        raise error
     
     user_details = user_details[:-1]
 

@@ -52,15 +52,15 @@ Parameters:
 
 ################# Create Lambda Function ##########################################
 Resources:
-  SCIMProvisioningLambda:
+  SCIMUserManagement:
     Type: "AWS::Lambda::Function"
     Properties:
-      FunctionName: !Sub "${AWS::StackName}-Provisioninglambda"
+      FunctionName: !Sub "${AWS::StackName}-UserManagement"
       Handler: user_management_lambda.lambda_handler
       Runtime: python3.9
       MemorySize: 512
       Timeout: 30
-      Role: !GetAtt SCIMProvisioningLambdaExecutionRole.Arn
+      Role: !GetAtt SCIMUserManagementExecutionRole.Arn
       Description: AWS Lambda function for SCIM user provisioning
       Environment:
         Variables:
@@ -69,7 +69,7 @@ Resources:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref UserManagementCodeObject
     DependsOn:
-      - SCIMProvisioningLambdaExecutionRole
+      - SCIMUserManagementExecutionRole
 
   SCIMAuthorizerLambda:
     Type: "AWS::Lambda::Function"
@@ -188,7 +188,7 @@ Resources:
               - ":apigateway:"
               - Ref: AWS::Region
               - ":lambda:path/2015-03-31/functions/"
-              - !GetAtt SCIMProvisioningLambda.Arn
+              - !GetAtt SCIMUserManagement.Arn
               - /invocations
 
   SCIMAPIMethodPatch:
@@ -215,7 +215,7 @@ Resources:
               - ":apigateway:"
               - Ref: AWS::Region
               - ":lambda:path/2015-03-31/functions/"
-              - !GetAtt SCIMProvisioningLambda.Arn
+              - !GetAtt SCIMUserManagement.Arn
               - /invocations
   
   SCIMAPIMethodDelete:
@@ -242,7 +242,7 @@ Resources:
               - ":apigateway:"
               - Ref: AWS::Region
               - ":lambda:path/2015-03-31/functions/"
-              - !GetAtt SCIMProvisioningLambda.Arn
+              - !GetAtt SCIMUserManagement.Arn
               - /invocations
               
   SCIMProvisioningAPIGW:
@@ -315,7 +315,7 @@ Resources:
     Properties:
       Action: "lambda:InvokeFunction"
       FunctionName: !GetAtt
-        - SCIMProvisioningLambda
+        - SCIMUserManagement
         - Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Join
@@ -351,10 +351,10 @@ Resources:
       ServiceToken: !GetAtt APIKeyGenerationLambda.Arn
 
   ## Create role for Lambda function
-  SCIMProvisioningLambdaExecutionRole:
+  SCIMUserManagementExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
-      RoleName: !Sub "${AWS::StackName}-ProvisioningRole"
+      RoleName: !Sub "${AWS::StackName}-UserManagement"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
