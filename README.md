@@ -100,6 +100,19 @@ x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 }
 ```
 
+### Update users
+
+The solution supports `PATCH` operations to update user attrbutes. Supported attributes are an writable attributes within your Cognito User Pool. This includes standard attributes supported by Cognito (based on the [OpenID Connect standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) and any custom attributes you have created within your user pool.
+
+- Supported actions are `add`, `replace`, and `remove`
+- A value is required for `add` and `remove` operations
+- A path is required for `remove` operations
+- Any writable value confiugred in the user pool can be modified 
+
+>[!NOTE]
+>`PATCH` operations currently responds only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that not all attributes may be returned, especially any custom attributes defined in the user pool.
+
+
 TODO: 
 - Project description
 - Architectural diagram
