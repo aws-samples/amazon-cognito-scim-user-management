@@ -61,7 +61,7 @@ Resources:
       MemorySize: 512
       Timeout: 30
       Role: !GetAtt SCIMUserManagementExecutionRole.Arn
-      Description: AWS Lambda function for SCIM user provisioning
+      Description: AWS Lambda function for SCIM user management
       Environment:
         Variables:
           USERPOOL_ID: !Ref AmazonCognitoUserPoolId
@@ -80,7 +80,7 @@ Resources:
       MemorySize: 512
       Timeout: 30
       Role: !GetAtt SCIMAuthorizerLambdaExecutionRole.Arn
-      Description: AWS Lambda Authorizer for SCIM user provisioning
+      Description: AWS Lambda authorizer for API Gateway
       Code:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref AuthorizerCodeObject
