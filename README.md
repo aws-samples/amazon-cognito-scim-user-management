@@ -29,7 +29,7 @@ Authorization: <Systems Manager api-token>
 HTTP/1.1 200 
 Date: Tue, 23 Jan 2024 20:14:41 GMT
 Content-Type: application/json
-x-amzn-RequestId: 97d490ef-207d-4a3e-958b-f8a188a668be
+x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEaaaaa
 
 {
     "totalResults": 2,
@@ -80,9 +80,9 @@ Authorization: <Systems Manager api-token>
 **Example response**
 ```
 HTTP/1.1 200 
-Date: Tue, 23 Jan 2024 20:14:41 GMT
+Date: Tue, 23 Jan 2024 20:20:20 GMT
 Content-Type: application/json
-x-amzn-RequestId: 991caeb0-667c-4c6a-bd42-a673727da84c
+x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 
 {
     "totalResults": 1,
