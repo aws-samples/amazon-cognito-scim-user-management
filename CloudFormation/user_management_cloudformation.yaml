@@ -48,9 +48,6 @@ Parameters:
     Type: String
   APIKeyGenerationCodeObject:
     Type: String
-  DefaultRoutingProfile:
-    Type: String
-    Default: "Basic Routing Profile"
 
 
 ################# Create Lambda Function ##########################################
@@ -68,7 +65,6 @@ Resources:
       Environment:
         Variables:
           USERPOOL_ID: !Ref AmazonCognitoUserPoolId
-          DEFAULT_ROUTING_PROFILE: !Ref DefaultRoutingProfile
       Code:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref UserManagementCodeObject
@@ -76,7 +72,6 @@ Resources:
       - SCIMProvisioningLambdaExecutionRole
 
   SCIMAuthorizerLambda:
-    Condition: IdpCondition
     Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: !Sub "${AWS::StackName}-Authorizerlambda"
@@ -138,7 +133,7 @@ Resources:
         Fn::GetAtt:
           - SCIMProvisioningAPIGW
           - RootResourceId
-      PathPart: "v2"
+      PathPart: "scim"
       RestApiId:
         Ref: SCIMProvisioningAPIGW
 
