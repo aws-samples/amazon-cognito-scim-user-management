@@ -110,7 +110,7 @@ The solution supports `PATCH` operations to update user attrbutes. Supported att
 - Any writable value confiugred in the user pool can be modified 
 
 >[!NOTE]
->`PATCH` operations currently responds only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that not all attributes may be returned, especially any custom attributes defined in the user pool.
+>`PATCH` operations currently respond only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that not all attributes may be returned, especially any custom attributes defined in the user pool.
 
 
 TODO: 
