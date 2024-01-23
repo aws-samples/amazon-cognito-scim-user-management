@@ -14,7 +14,7 @@ This solution is a lightweight SCIM interface for Cogntio that leverages Amazon 
 
 `GET` requests will display users' usernames and associated Cognito User ID (Sub) value. There are two ways to make a `GET` request: List all users, or use filters to narrow down your list of users.
 
-**Examples**
+**Listing all users**
 
 The following is an example request and response for listing all users:
 
@@ -67,6 +67,7 @@ The following filters are supported:
 **Filter example**
 `filter=<filterAttribute> eq "<filterValue>"`
 
+The following is an example request and response for filtering users:
 
 **Example request**
 ```
