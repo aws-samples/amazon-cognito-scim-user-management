@@ -1,7 +1,7 @@
 ## Amazon Cognito SCIM user management
 
 This solution is a lightweight SCIM interface for Cogntio that leverages Amazon API Gateway and Lamda functions to facilitate the following actions: 
-- Listing Cognito User IDs
+- List Cognito User IDs
 - Update Cognito users
 - Delete Cognito users
 
