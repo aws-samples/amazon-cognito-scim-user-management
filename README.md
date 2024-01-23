@@ -1,4 +1,13 @@
-## My Project
+## Cognito SCIM connector
+
+This solution is a lightweight SCIM interface for Cogntio that leverages Amazon API Gateway and Lamda functions to facilitate the following actions: 
+- Listing Cognito User IDs
+- Update Cognito users
+- Delete Cognito users
+
+>[!IMPORTANT]
+> This solution currently does not **create** Cognito users. This is because Cognito supports just-in-time (JIT) user creation by default.
+
 
 TODO: 
 - Project description
