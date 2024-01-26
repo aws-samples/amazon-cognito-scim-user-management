@@ -107,7 +107,7 @@ The solution supports `PATCH` operations to update user attrbutes. Supported att
 - Supported actions are `add`, `replace`, and `remove`
 - A value is required for `add` and `remove` operations
 - A path is required for `remove` operations
-- Any writable value confiugred in the user pool can be modified 
+- Any writable value configured in the user pool can be modified 
 
 >[!NOTE]
 >`PATCH` operations currently respond only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that all user attributes may not be returned, especially any custom attributes defined in the user pool.
