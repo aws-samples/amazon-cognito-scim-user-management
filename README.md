@@ -100,7 +100,7 @@ x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 }
 ```
 
-### Update users
+### PATCH requests
 
 The solution supports `PATCH` operations to update user attrbutes. Supported attributes are an writable attributes within your Cognito User Pool. This includes standard attributes supported by Cognito (based on the [OpenID Connect standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) and any custom attributes you have created within your user pool.
 
@@ -179,11 +179,6 @@ TODO:
 - Project description
 - Architectural diagram
 - Limitations
-
-Be sure to:
-
-* Change the title in this README
-* Edit your repository description on GitHub
 
 ## Security
 
