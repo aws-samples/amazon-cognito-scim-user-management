@@ -110,8 +110,70 @@ The solution supports `PATCH` operations to update user attrbutes. Supported att
 - Any writable value confiugred in the user pool can be modified 
 
 >[!NOTE]
->`PATCH` operations currently respond only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that not all attributes may be returned, especially any custom attributes defined in the user pool.
+>`PATCH` operations currently respond only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that all user attributes may not be returned, especially any custom attributes defined in the user pool.
 
+**Example request**
+```
+PATCH https://scim.us-east-1.amazonaws.com/{tenant_id}/scim/v2/Users/{Cognito user ID}
+User-Agent: Mozilla/5.0
+Authorization: Bearer <bearer_token>
+
+{
+    "schemas": [
+        "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+    ],
+    "Operations": [
+        {
+            "op": "replace",
+            "path": "email",
+            "value": "alejandro_rosalez@example.org"
+        }
+    ]
+}
+```
+>[!TIP]
+> Retrieve the user's Cognito user ID by using the `GET` method. You can also get this information in the Cognito console, or using the [ListUsers](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ListUsers.html) Cognito API.
+
+**Example response**
+```
+HTTP/1.1 200 
+Date: Fri, 26 Jan 2024 17:43:19 GMT
+Content-Type: application/json
+x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
+
+{
+    "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User"
+    ],
+    "id": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
+    "userName": "alejandro_rosalez",
+    "name": {
+        "familyName": "Rosalez",
+        "givenName": "Alejandro"
+    },
+    "emails": [
+        {
+            "value": "alejandro_rosalez@example.com"
+        }
+    ],
+    "addresses": [
+        {
+            "streetAddress": "123 Any Street, Any Town, USA"
+        }
+    ],
+    "phoneNumbers": [
+        {
+            "value": "+15125550100"
+        }
+    ],
+    "active": true,
+    "meta": {
+        "resourceType": "User",
+        "created": "2024-01-23T20:39:24Z",
+        "lastModified": "2024-01-26T17:43:19Z"
+    }
+}
+```
 
 TODO: 
 - Project description
