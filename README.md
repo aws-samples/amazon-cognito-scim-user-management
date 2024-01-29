@@ -117,7 +117,7 @@ The `/Users` endpoint allows `PATCH` requests to update user attrbutes. Supporte
 
 **Example request**
 ```
-PATCH https://scim.us-east-1.amazonaws.com/{tenant_id}/scim/v2/Users/{Cognito user ID}
+PATCH https://{API Gateway stage invoke URL}/scim/v2/Users/{Cognito user ID}
 User-Agent: Mozilla/5.0
 Authorization: <Systems Manager api-token>
 
@@ -184,7 +184,7 @@ The `/Users` endpoint can delete a user with `DELETE` request.
 
 **Example request**
 ```
-DELETE https://scim.us-east-1.amazonaws.com/{tenant_id}/scim/v2/Users/{Cognito user ID}
+DELETE https://{API Gateway stage invoke URL}/scim/v2/Users/{Cognito user ID}
 User-Agent: Mozilla/5.0
 Authorization: <Systems Manager api-token>
 ```
