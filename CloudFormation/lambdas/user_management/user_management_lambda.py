@@ -11,9 +11,11 @@ import botocore
 from datetime import datetime
 
 LOGGER = logging.getLogger()
+'''
+If you need to debug code, change logging.INFO to logging.DEBUG. !!NOTE!! This may print sensitive information.
+It is not recommended to use logging.DEBUG in production environments.
+'''
 LOGGER.setLevel(logging.INFO)
-
-# boto3 service call
 COGNITO_CLIENT = boto3.client("cognito-idp")
 
 # Environment variaable
@@ -39,7 +41,7 @@ def get_cognito_user(USERPOOL_ID, event):
     LOGGER.info("Passing filter %s", query_filter)
     
     if query_filter:
-        # Check if filter is supported
+        # If filter is a supported filter, call ListUsers with the filter
         if query_filter.split()[0].lower() in AVAILABLE_FILTERS:
             
             query_filter = query_filter.split()
@@ -100,7 +102,10 @@ def get_cognito_user(USERPOOL_ID, event):
 
 
 
-# Return username of PATCH target
+'''
+Return username the targeted user of a PATCH request. Allows to convert from SCIM required user ID (Sub)
+to the username as required by Cognito's AdminUpdateUserAttribute API call.
+'''
 def find_target_user(USERPOOL_ID, event, body):
     """To update cognito user."""
     user_to_update = ''
@@ -127,7 +132,7 @@ def find_target_user(USERPOOL_ID, event, body):
             raise error
             
     
-# Helper function to make AdminUpdateUserAttributes/AdminDeleteUserAttrbites calls
+# Function to make AdminUpdateUserAttributes and AdminDeleteUserAttributes calls
 
 def update_cognito_user(USERPOOL_ID, body, target_user):
     
@@ -137,7 +142,7 @@ def update_cognito_user(USERPOOL_ID, body, target_user):
     for i in range(0, len(body['Operations'])):
         operation = body['Operations'][i]
         
-        #Build dictionary to add/replace attributes
+        #Build dictionary to add/update attributes
         if (operation['op'] == 'replace') or (operation['op'] == 'add'):
             attribute = '{"Name": "' + operation['path'] + '", "Value": "' + operation['value'] + '"}'
             attributes_to_update.append(json.loads(attribute))
@@ -148,20 +153,21 @@ def update_cognito_user(USERPOOL_ID, body, target_user):
 
         LOGGER.info(attributes_to_update)
 
-    if attributes_to_update:
+    # Call AdminUpdateUserAttributes if attributes were listed with add or replace operations
         COGNITO_CLIENT.admin_update_user_attributes(
                 UserPoolId = USERPOOL_ID,
                 Username = target_user,
                 UserAttributes = attributes_to_update
                 )
     
+    # Call AdminDeleteUserAttributes if remove operation were inclded in PATCH payload
     if attributes_to_remove:
         COGNITO_CLIENT.admin_delete_user_attributes(
             UserPoolId = USERPOOL_ID,
             Username = target_user,
             UserAttributeNames = attributes_to_remove)
 
-#Helper function to create JSON response update_cognito_user
+# Helper function to create JSON response to update_cognito_user
 def patch_response_body(USERPOOL_ID,target_user):
     
     
