@@ -146,6 +146,8 @@ def update_cognito_user(USERPOOL_ID, body, target_user):
         elif (operation['op'] == 'remove'):
             attributes_to_remove.append(operation['path'].lower())
 
+        LOGGER.info(attributes_to_update)
+
     if attributes_to_update:
         COGNITO_CLIENT.admin_update_user_attributes(
                 UserPoolId = USERPOOL_ID,
