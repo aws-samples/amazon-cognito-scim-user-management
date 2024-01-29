@@ -102,12 +102,15 @@ x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 
 ### PATCH requests
 
-The `/Users` endpoint allows `PATCH` requests to update user attrbutes. Supported attributes are writable attributes within your Cognito User Pool. This includes standard attributes supported by Cognito (based on the [OpenID Connect standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) and any custom attributes you have created within your user pool.
+The `/Users` endpoint allows `PATCH` requests to update user attrbutes. Supported attributes are the writable attributes within your Cognito User Pool. This includes standard attributes supported by Cognito (based on the [OpenID Connect standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) and any custom attributes you have created within your user pool.
 
 - Supported actions are `add`, `replace`, and `remove`
 - A value is required for `add` and `remove` operations
 - A path is required for `remove` operations
 - Any writable value configured in the user pool can be modified 
+
+>[!TIP]
+> To verify an attribute which must be verified in the same API request, you must include the `email_verified` or `phone_number_verfified` attribute with a value of `true`. This will not send a verification message to the updated user.
 
 >[!NOTE]
 >`PATCH` operations currently respond only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that all user attributes may not be returned, especially any custom attributes defined in the user pool.
