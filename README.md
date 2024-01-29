@@ -12,7 +12,7 @@ This solution is a lightweight SCIM interface for Cogntio that leverages Amazon 
 
 ### GET requests
 
-`GET` requests will display users' usernames and associated Cognito User ID (Sub) value. There are two ways to make a `GET` request: List all users, or use filters to narrow down your list of users.
+The `/Users` endpoint allows `GET` requests to display users' usernames and associated Cognito User ID (Sub) values. There are two ways to make a `GET` request: List all users, or use filters to narrow down your list of users.
 
 **Listing all users**
 
@@ -102,7 +102,7 @@ x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 
 ### PATCH requests
 
-The solution supports `PATCH` operations to update user attrbutes. Supported attributes are writable attributes within your Cognito User Pool. This includes standard attributes supported by Cognito (based on the [OpenID Connect standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) and any custom attributes you have created within your user pool.
+The `/Users` endpoint allows `PATCH` requests to update user attrbutes. Supported attributes are writable attributes within your Cognito User Pool. This includes standard attributes supported by Cognito (based on the [OpenID Connect standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) and any custom attributes you have created within your user pool.
 
 - Supported actions are `add`, `replace`, and `remove`
 - A value is required for `add` and `remove` operations
@@ -116,7 +116,7 @@ The solution supports `PATCH` operations to update user attrbutes. Supported att
 ```
 PATCH https://scim.us-east-1.amazonaws.com/{tenant_id}/scim/v2/Users/{Cognito user ID}
 User-Agent: Mozilla/5.0
-Authorization: Bearer <bearer_token>
+Authorization: <Systems Manager api-token>
 
 {
     "schemas": [
@@ -173,6 +173,24 @@ x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
         "lastModified": "2024-01-26T17:43:19Z"
     }
 }
+```
+
+### DELETE requests
+
+The `/Users` endpoint can delete a user with `DELETE` request.
+
+**Example request**
+```
+DELETE https://scim.us-east-1.amazonaws.com/{tenant_id}/scim/v2/Users/{Cognito user ID}
+User-Agent: Mozilla/5.0
+Authorization: <Systems Manager api-token>
+```
+
+```
+HTTP/1.1 204 
+Date: Mon, 29 Jan 2024 19:06:15 GMT
+Content-Type: application/json
+x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 ```
 
 TODO: 
