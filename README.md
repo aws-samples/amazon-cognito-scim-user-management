@@ -24,7 +24,7 @@ GET https://{API Gateway stage invoke URL}/scim/v2/Users
 User-Agent: Mozilla/5.0
 Authorization: <Systems Manager api-token>
 ```
-**Example Response**
+**Example response**
 ```
 HTTP/1.1 200 
 Date: Tue, 23 Jan 2024 20:14:41 GMT
@@ -186,6 +186,7 @@ User-Agent: Mozilla/5.0
 Authorization: <Systems Manager api-token>
 ```
 
+**Example response**
 ```
 HTTP/1.1 204 
 Date: Mon, 29 Jan 2024 19:06:15 GMT
