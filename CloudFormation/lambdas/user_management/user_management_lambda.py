@@ -18,8 +18,14 @@ It is not recommended to use logging.DEBUG in production environments.
 LOGGER.setLevel(logging.INFO)
 COGNITO_CLIENT = boto3.client("cognito-idp")
 
-# Environment variaable
+# Environment variaables
 USERPOOL_ID = os.getenv("USERPOOL_ID")
+
+# Identity Provider name from Cognito, if using federated users. This allows IdPs like Okta to query the right user
+IDENTITY_PROVIDER = ''
+if os.getenv("IDENTITY_PROVIDER"):
+    IDENTITY_PROVIDER = os.getenv("IDENTITY_PROVIDER") + '_'
+LOGGER.info('IdP is' + IDENTITY_PROVIDER)
 
 #Available Filters for ListUsers API
 AVAILABLE_FILTERS = ['username', 'email', 'phone_number', 'name', 'given_name', 
@@ -34,7 +40,7 @@ def get_cognito_user(USERPOOL_ID, event):
     
     if event['queryStringParameters']:
         try:
-            query_filter = event['queryStringParameters']['filters']
+            query_filter = event['queryStringParameters']['filter']
         except:
             query_filter = False
             
@@ -45,15 +51,17 @@ def get_cognito_user(USERPOOL_ID, event):
         if query_filter.split()[0].lower() in AVAILABLE_FILTERS:
             
             query_filter = query_filter.split()
-            
+            if IDENTITY_PROVIDER:
+                query_filter = query_filter[0].lower() + ' = "' + IDENTITY_PROVIDER + query_filter[2].strip('"') + '"'
+            else:
+                query_filter = query_filter[0].lower() + ' = ' + query_filter[2]
+                
             LOGGER.info("Looking for users using the %s filter in Cognito user pool %s", 
                 query_filter, USERPOOL_ID)    # noqa: E501
             paginator = COGNITO_CLIENT.get_paginator('list_users')
             paginated_user_list = paginator.paginate(
                 UserPoolId = USERPOOL_ID,
-                Filter = query_filter[0].lower() + " = " + query_filter[2],
-                PaginationConfig={
-                }
+                Filter = query_filter
             )
         # Throw error if filter is unsupported
         elif query_filter.split()[0].lower() not in AVAILABLE_FILTERS:
@@ -81,7 +89,11 @@ def get_cognito_user(USERPOOL_ID, event):
         for page in paginated_user_list:
                 for user in page['Users']:
                     if user['Username']:
-                        user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
+                        if IDENTITY_PROVIDER:
+                            username = user['Username'].lstrip(IDENTITY_PROVIDER)
+                            user_details += '{"userName": "' + username + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
+                        else:
+                            user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
                         LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                             user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
     except botocore.exceptions.ClientError as error:
@@ -262,7 +274,7 @@ def lambda_handler(event, context):
             }
         }
             
-    if method == 'PATCH':
+    if method == 'PATCH' or method == 'PUT':
         target_user = find_target_user(USERPOOL_ID, event, body)
         
         update_cognito_user(USERPOOL_ID, body, target_user)
