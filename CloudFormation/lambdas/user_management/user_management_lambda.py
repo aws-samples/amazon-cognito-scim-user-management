@@ -106,9 +106,11 @@ def get_cognito_user(USERPOOL_ID, event):
                     if query_filter:
                         if IDENTITY_PROVIDER:
                             username = user['Username'].lstrip(IDENTITY_PROVIDER + '_')
-                            user_details += '{"userName": "' + username + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
+                            user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                    
                     else:
-                        user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
+                        user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+
                     LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                         user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
     except botocore.exceptions.ClientError as error:
@@ -116,9 +118,7 @@ def get_cognito_user(USERPOOL_ID, event):
             error.response['Error']['Code'])     # noqa: E501
         raise error
     
-    
     user_details = user_details[:-1]
-
     number_of_results = (len(list(user_details.split('}'))) - 1)
 
     get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + 
@@ -166,6 +166,8 @@ def update_cognito_user(USERPOOL_ID, body, target_user):
     
     attributes_to_update = []
     attributes_to_remove = []
+    
+    LOGGER.info('Body is' + str(body))
     
     for i in range(0, len(body['Operations'])):
         operation = body['Operations'][i]
