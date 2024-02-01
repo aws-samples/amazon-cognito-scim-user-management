@@ -15,7 +15,7 @@ LOGGER = logging.getLogger()
 If you need to debug code, change logging.INFO to logging.DEBUG. !!NOTE!! This may print sensitive information.
 It is not recommended to use logging.DEBUG in production environments.
 '''
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.DEBUG)
 COGNITO_CLIENT = boto3.client("cognito-idp")
 
 # Environment variaables
@@ -38,68 +38,84 @@ def get_cognito_user(USERPOOL_ID, event):
     paginated_user_list = ''
     query_filter = ''
     
-    if event['queryStringParameters']:
-        try:
-            query_filter = event['queryStringParameters']['filter']
-        except:
-            query_filter = False
-            
-    LOGGER.info("Passing filter %s", query_filter)
-    
-    if query_filter:
-        # If filter is a supported filter, call ListUsers with the filter
-        if query_filter.split()[0].lower() in AVAILABLE_FILTERS:
-            
-            query_filter = query_filter.split()
-            if IDENTITY_PROVIDER:
-                query_filter = query_filter[0].lower() + ' = "' + IDENTITY_PROVIDER + query_filter[2].strip('"') + '"'
-            else:
-                query_filter = query_filter[0].lower() + ' = ' + query_filter[2]
+    if event['resource'] == '/scim/v2/Users':
+        if event['queryStringParameters']:
+            try:
+                query_filter = event['queryStringParameters']['filter']
+            except:
+                query_filter = False
                 
-            LOGGER.info("Looking for users using the %s filter in Cognito user pool %s", 
-                query_filter, USERPOOL_ID)    # noqa: E501
+        LOGGER.info("Passing filter %s", query_filter)
+        
+        if query_filter:
+            # If filter is a supported filter, call ListUsers with the filter
+            if query_filter.split()[0].lower() in AVAILABLE_FILTERS:
+                
+                query_filter = query_filter.split()
+                if IDENTITY_PROVIDER:
+                    query_filter = query_filter[0].lower() + ' = "' + IDENTITY_PROVIDER + query_filter[2].strip('"') + '"'
+                else:
+                    query_filter = query_filter[0].lower() + ' = ' + query_filter[2]
+                    
+                LOGGER.info("Looking for users using the %s filter in Cognito user pool %s", 
+                    query_filter, USERPOOL_ID)    # noqa: E501
+                paginator = COGNITO_CLIENT.get_paginator('list_users')
+                paginated_user_list = paginator.paginate(
+                    UserPoolId = USERPOOL_ID,
+                    Filter = query_filter
+                )
+
+            # Throw error if filter is unsupported
+            elif query_filter.split()[0].lower() not in AVAILABLE_FILTERS:
+                LOGGER.info("Found unsupported filter")    # noqa: E501
+                bad_filter= { 
+                    "status": "400", 
+                    "response":{"schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+                    "scimType":"invalidFilter",
+                    "detail":"Request contained an unsupported filter",
+                    "status":"400"
+                        }
+                    }
+                return bad_filter
+            
+        # If no filter provided, list all users
+        elif not query_filter:
+            LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
             paginator = COGNITO_CLIENT.get_paginator('list_users')
             paginated_user_list = paginator.paginate(
                 UserPoolId = USERPOOL_ID,
-                Filter = query_filter
-            )
-        # Throw error if filter is unsupported
-        elif query_filter.split()[0].lower() not in AVAILABLE_FILTERS:
-            LOGGER.info("Found unsupported filter")    # noqa: E501
-            bad_filter= { 
-                "status": "400", 
-                "response":{"schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
-                "scimType":"invalidFilter",
-                "detail":"Request contained an unsupported filter",
-                "status":"400"
+                PaginationConfig={
                     }
-                }
-            return bad_filter
+                )
+
+    elif event['resource'] == '/scim/v2/Users/{userid+}':
         
-    # If no filter provided, list all users
-    elif not query_filter:
-        LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
+        user_sub = event['pathParameters']['userid']
+
         paginator = COGNITO_CLIENT.get_paginator('list_users')
+        LOGGER.info('Paginator instantiated')
         paginated_user_list = paginator.paginate(
             UserPoolId = USERPOOL_ID,
-            PaginationConfig={
-                }
-            )
+            Filter = 'sub = "' + user_sub + '"'
+        )
+
     try:
         for page in paginated_user_list:
-                for user in page['Users']:
-                    if user['Username']:
+            for user in page['Users']:
+                if user['Username']:
+                    if query_filter:
                         if IDENTITY_PROVIDER:
-                            username = user['Username'].lstrip(IDENTITY_PROVIDER)
+                            username = user['Username'].lstrip(IDENTITY_PROVIDER + '_')
                             user_details += '{"userName": "' + username + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
-                        else:
-                            user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
-                        LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
-                            user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
+                    else:
+                        user_details += '{"userName": "' + user['Username'] + '",' + '"Id": "' + user['Attributes'][0]['Value'] + '"},'
+                    LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
+                        user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
     except botocore.exceptions.ClientError as error:
         LOGGER.error("Boto3 client error in user_management_lambda.py while getting Cognito user due to %s",
             error.response['Error']['Code'])     # noqa: E501
         raise error
+    
     
     user_details = user_details[:-1]
 
