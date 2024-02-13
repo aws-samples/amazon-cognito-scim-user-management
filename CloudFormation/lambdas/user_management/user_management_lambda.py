@@ -8,6 +8,7 @@ import json
 import logging
 import boto3
 import botocore
+import pprint
 from datetime import datetime
 
 LOGGER = logging.getLogger()
@@ -93,7 +94,6 @@ def get_cognito_user(USERPOOL_ID, event):
         user_sub = event['pathParameters']['userid']
 
         paginator = COGNITO_CLIENT.get_paginator('list_users')
-        LOGGER.info('Paginator instantiated')
         paginated_user_list = paginator.paginate(
             UserPoolId = USERPOOL_ID,
             Filter = 'sub = "' + user_sub + '"'
@@ -105,7 +105,7 @@ def get_cognito_user(USERPOOL_ID, event):
                 if user['Username']:
                     if query_filter:
                         if IDENTITY_PROVIDER:
-                            username = user['Username'].lstrip(IDENTITY_PROVIDER + '_')
+                            username = user['Username'].lstrip(IDENTITY_PROVIDER)
                             user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
                     
                     else:
@@ -128,16 +128,11 @@ def get_cognito_user(USERPOOL_ID, event):
     
     return get_user_response_payload
 
-
-
-'''
-Return username the targeted user of a PATCH request. Allows to convert from SCIM required user ID (Sub)
-to the username as required by Cognito's AdminUpdateUserAttribute API call.
-'''
+#Helper function for PUT and PATCH requests. Takes UserID and returns to Cognito username.
 def find_target_user(USERPOOL_ID, event, body):
     """To update cognito user."""
     user_to_update = ''
-
+        
     if event['pathParameters']['userid']:
         try:
             user_to_update = COGNITO_CLIENT.list_users(
@@ -159,10 +154,42 @@ def find_target_user(USERPOOL_ID, event, body):
             LOGGER.error("Error: %s", error.response)
             raise error
             
+def put_cognito_user(USERPOOL_ID, body, target_user):
+
+    attributes_to_update = []
+    attributes_to_remove = []
+    attribute_map = [{"family_name": ["name", "familyName"]}, {"given_name": ["name", "givenName"]}, {"locale": "locale"}, {"middle_name": ["name", "middleName"]}, 
+                      {"name": ["name", "formatted"]}, {"nickname": "nickName"}, {"preferred_username": "displayName"}, {"zoneinfo": "timezone"}, {"profile": "profileUrl"}]
+    idp_attribute = ''
+    cognito_user_info = COGNITO_CLIENT.list_users(
+    UserPoolId= USERPOOL_ID,
+    Filter = '"username" = "' + target_user + '"'
+    )
     
+    cognito_list_users_attributes = cognito_user_info["Users"][0]["Attributes"]
+
+    for i in range(0, len(attribute_map)):
+        if len(attribute_map[i].values()) == 2:
+            idp_attribute_path = list(attribute_map[i].values())
+            idp_attribute = body[idp_attribute_path[0]][idp_attribute_path[1]]
+            LOGGER.info('idp_attribute value is' + str(idp_attribute))
+        
+            if ('"Name": "' + str(list(attribute_map[i].keys())[0]) +'"') in list(cognito_list_users_attributes[i].keys()):
+                cognito_attribute = str(list(cognito_list_users_attributes[i].keys()[0]))
+            else:
+                LOGGER.info(('"Name": ' + str(list(attribute_map[i].keys())[0])))
+        if idp_attribute in body:
+            LOGGER.info("Found attribute in body")
+            if idp_attribute != cognito_attribute:
+                attribute = '{"Name": "' + cognito_attribute + '", "Value": "' + idp_attribute
+                attributes_to_update += attributes_to_update.append(attribute)
+
+    LOGGER.info(attributes_to_update)
+
+
 # Function to make AdminUpdateUserAttributes and AdminDeleteUserAttributes calls
 
-def update_cognito_user(USERPOOL_ID, body, target_user):
+def patch_cognito_user(USERPOOL_ID, body, target_user):
     
     attributes_to_update = []
     attributes_to_remove = []
@@ -197,7 +224,7 @@ def update_cognito_user(USERPOOL_ID, body, target_user):
             Username = target_user,
             UserAttributeNames = attributes_to_remove)
 
-# Helper function to create JSON response to update_cognito_user
+# Helper function to create JSON response to patch_cognito_user
 def patch_response_body(USERPOOL_ID,target_user):
     
     
@@ -291,11 +318,16 @@ def lambda_handler(event, context):
                 'Content-Type': 'application/json',
             }
         }
-            
-    if method == 'PATCH' or method == 'PUT':
+        
+    if method == 'PUT':
+        target_user = find_target_user(USERPOOL_ID, event, body)
+
+        put_cognito_user(USERPOOL_ID, body, target_user)
+
+    if method == 'PATCH':
         target_user = find_target_user(USERPOOL_ID, event, body)
         
-        update_cognito_user(USERPOOL_ID, body, target_user)
+        patch_cognito_user(USERPOOL_ID, body, target_user)
         
         patch_response = patch_response_body(USERPOOL_ID,target_user)
         
