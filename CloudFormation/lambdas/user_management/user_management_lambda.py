@@ -66,19 +66,20 @@ def get_cognito_user(USERPOOL_ID, event):
                     Filter = query_filter
                 )
 
-            # Throw error if filter is unsupported
+        # Throw error if filter is unsupported
             elif query_filter.split()[0].lower() not in AVAILABLE_FILTERS:
                 LOGGER.info("Found unsupported filter")    # noqa: E501
                 bad_filter= { 
                     "status": "400", 
-                    "response":{"schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+                    "response":{"schemas": '["urn:ietf:params:scim:api:messages:2.0:Error"]',
                     "scimType":"invalidFilter",
                     "detail":"Request contained an unsupported filter",
-                    "status":"400"
+                    "status": "400"
                         }
                     }
+                    
                 return bad_filter
-            
+        
         # If no filter provided, list all users
         elif not query_filter:
             LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
@@ -113,6 +114,8 @@ def get_cognito_user(USERPOOL_ID, event):
 
                     LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                         user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
+                    
+
     except botocore.exceptions.ClientError as error:
         LOGGER.error("Boto3 client error in user_management_lambda.py while getting Cognito user due to %s",
             error.response['Error']['Code'])     # noqa: E501
@@ -121,12 +124,21 @@ def get_cognito_user(USERPOOL_ID, event):
     user_details = user_details[:-1]
     number_of_results = (len(list(user_details.split('}'))) - 1)
 
-    get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + 
-        ', "itemsPerPage": ' + str(number_of_results) + 
-        ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' 
-        + user_details + ']}')
+    if number_of_results == 0:
+
+        user_not_found = { 
+                        "status": "404", 
+                        "response":{"status": "404", "schemas": '["urn:ietf:params:scim:api:messages:2.0:Error"]',
+                        "detail":"User not found",
+                            }
+                        }
+
+        return user_not_found
     
-    return get_user_response_payload
+    else:
+        get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + ', "itemsPerPage": ' + str(number_of_results) + ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' + user_details + ']}')
+
+        return get_user_response_payload
 
 #Helper function for PUT and PATCH requests. Takes UserID and returns to Cognito username.
 def find_target_user(USERPOOL_ID, event, body):
@@ -311,14 +323,36 @@ def lambda_handler(event, context):
     # Get method user management action
     if method == 'GET':
         response_body = get_cognito_user(USERPOOL_ID, event)
-        return {
-            'statusCode': 200,
-            'body': json.dumps(response_body),
-            'headers': {
-                'Content-Type': 'application/json',
-            }
-        }
+        LOGGER.info(response_body)
         
+        if 'response' in response_body.keys():
+            if 'scimType' in response_body['response'].keys():
+                if response_body['response']['scimType'] == 'invalidFilter':
+                    return {
+                        'statusCode': response_body['status'],
+                        'body': json.dumps(response_body),
+                        'headers': {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+        
+            elif response_body['response']['detail'] == 'User not found':
+                return {
+                    'statusCode': response_body['status'],
+                    'body': json.dumps(response_body),
+                    'headers': {
+                        'Content-Type': 'application/json'
+                    }
+                }
+        
+        else:
+            return{
+                'statusCode': "200",
+                'body': json.dumps(response_body),
+                'headers': {
+                    'Content-Type': 'application/json'
+                }
+            }
     if method == 'PUT':
         target_user = find_target_user(USERPOOL_ID, event, body)
 
