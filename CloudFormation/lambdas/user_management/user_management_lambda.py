@@ -115,20 +115,21 @@ def get_cognito_user(USERPOOL_ID, event):
 
                     LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                         user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
+                    LOGGER.info(user_details)
                     
 
     except botocore.exceptions.ClientError as error:
         LOGGER.error("Boto3 client error in user management Lambda while getting Cognito user due to %s",
             error.response['Error']['Code'])     # noqa: E501
         raise error
-    
+
     if (len(list(user_details.split('}')))) == 1:
-        number_of_results == 1
+        number_of_results == '1'
+        LOGGER.info('We used this loop')
     else:
         number_of_results = (len(list(user_details.split('}'))) - 1)
 
     if number_of_results == 0:
-
         user_not_found = { 
                         "status": "404", 
                         "response":{
@@ -141,7 +142,7 @@ def get_cognito_user(USERPOOL_ID, event):
         return user_not_found
     
     else:
-        get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + ', "itemsPerPage": ' + str(number_of_results) + ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' + user_details + ']}')
+        get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + ', "itemsPerPage": ' + str(number_of_results) + ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' + user_details.rstrip(',') + ']}')
 
         return get_user_response_payload
 
