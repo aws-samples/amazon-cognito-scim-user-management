@@ -109,14 +109,12 @@ def get_cognito_user(USERPOOL_ID, event):
                         if IDENTITY_PROVIDER:
                             username = user['Username'].lstrip(IDENTITY_PROVIDER)
                             user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
-                    
-                    else:
-                        user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                        else:
+                            user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
 
                     LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                         user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
-                    LOGGER.info(user_details)
-                    
+
 
     except botocore.exceptions.ClientError as error:
         LOGGER.error("Boto3 client error in user management Lambda while getting Cognito user due to %s",
@@ -125,7 +123,7 @@ def get_cognito_user(USERPOOL_ID, event):
 
     if (len(list(user_details.split('}')))) == 1:
         number_of_results == '1'
-        LOGGER.info('We used this loop')
+        
     else:
         number_of_results = (len(list(user_details.split('}'))) - 1)
 
