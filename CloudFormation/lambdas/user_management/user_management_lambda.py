@@ -537,7 +537,7 @@ def get_cognito_user(USERPOOL_ID, event):
                 return bad_filter
         
         # If no filter provided, list all users
-        elif not query_filter:
+        else:
             LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
             paginator = COGNITO_CLIENT.get_paginator('list_users')
             paginated_user_list = paginator.paginate(
@@ -560,15 +560,13 @@ def get_cognito_user(USERPOOL_ID, event):
         for page in paginated_user_list:
             for user in page['Users']:
                 if user['Username']:
-                    if query_filter:
-                        if IDENTITY_PROVIDER:
-                            username = user['Username'].lstrip(IDENTITY_PROVIDER)
-                            user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
-                        else:
-                            user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
-                    LOGGER.info(user_details)
-                    LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
-                        user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
+                    if IDENTITY_PROVIDER:
+                        username = user['Username'].lstrip(IDENTITY_PROVIDER)
+                        user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                    else:
+                        user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
+                    user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
                     
 
     except botocore.exceptions.ClientError as error:
@@ -592,8 +590,7 @@ def get_cognito_user(USERPOOL_ID, event):
         return user_not_found
     
     else:
-        get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + ', "itemsPerPage": ' + str(number_of_results) + ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' + user_details + ']}')
-
+        get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + ', "itemsPerPage": ' + str(number_of_results) + ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' + user_details.rstrip(',') + ']}')
         return get_user_response_payload
 
 #Helper function for PUT and PATCH requests. Takes UserID and returns to Cognito username.
