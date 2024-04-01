@@ -154,58 +154,74 @@ def find_target_user(USERPOOL_ID, event, body):
                 Filter = 'sub = "' + event['pathParameters']['userid'] + '"'
             )
             LOGGER.info('ListUser response is %s', user_to_update)
-            try:
-                target_user = user_to_update['Users'][0]['Username']
-                
-                return target_user
-            except IndexError as error:
-                LOGGER.error("Was unable to find userid %s in Cognito userpool %s", event['pathParameters']['userid'], USERPOOL_ID)
-                raise error
-                
+        
+            return user_to_update
         except botocore.exceptions.ClientError as error:
             LOGGER.error("Unable to find user associated with UserId %s", 
                 event['pathParameters']['userid'])
             LOGGER.error("Error: %s", error.response)
             raise error
-    LOGGER.info('***User to Update***')
-    LOGGER.info(user_to_update)
-
+        
 # Update a user that already exists in Cognito
-def put_existing_cognito_user(USERPOOL_ID, body, target_user):
+def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
 
     attributes_to_update = []
     attributes_to_remove = []
-    attribute_map = [{"family_name": ["name", "familyName"]}, {"given_name": ["name", "givenName"]}, {"locale": "locale"}, {"middle_name": ["name", "middleName"]}, 
-                      {"name": ["name", "formatted"]}, {"nickname": "nickName"}, {"preferred_username": "displayName"}, {"zoneinfo": "timezone"}, {"profile": "profileUrl"}]
-    idp_attribute = ''
+    cognito_attributes = {}
+    scim_attributes = {}
 
-    if target_user: 
-        cognito_user_info = COGNITO_CLIENT.list_users(
-        UserPoolId= USERPOOL_ID,
-        Filter = '"username" = "' + target_user + '"'
-        )
-    
-    cognito_list_users_attributes = cognito_user_info["Users"][0]["Attributes"]
-    LOGGER.info('***List User Attributes***')
+    #Attributes from Cognito
+    cognito_list_users_attributes = user_to_update["Users"][0]["Attributes"]
+    LOGGER.info('***Cognito list user attributes***')
     LOGGER.info(cognito_list_users_attributes)
+    LOGGER.info(type(cognito_list_users_attributes))
 
-    for i in range(0, len(attribute_map)):
-        if len(attribute_map[i].values()) == 2:
-            idp_attribute_path = list(attribute_map[i].values())
-            idp_attribute = body[idp_attribute_path[0]][idp_attribute_path[1]]
-            LOGGER.info('idp_attribute value is' + str(idp_attribute))
+    temp_list = len(cognito_list_users_attributes)
+    LOGGER.info(temp_list)
+
+    if len(cognito_list_users_attributes) == 1:
+        attribute_dict = cognito_list_users_attributes[0]
+
+        cognito_attributes[attribute_dict['Name']] = attribute_dict['Value']
         
-            if ('"Name": "' + str(list(attribute_map[i].keys())[0]) +'"') in list(cognito_list_users_attributes[i].keys()):
-                cognito_attribute = str(list(cognito_list_users_attributes[i].keys()[0]))
-            else:
-                LOGGER.info(('"Name": ' + str(list(attribute_map[i].keys())[0])))
-        if idp_attribute in body:
-            LOGGER.info("Found attribute in body")
-            if idp_attribute != cognito_attribute:
-                attribute = '{"Name": "' + cognito_attribute + '", "Value": "' + idp_attribute
-                attributes_to_update += attributes_to_update.append(attribute)
+    else:
+        for i in range(0, (len(cognito_list_users_attributes) -1)):
+            attribute_dict = cognito_list_users_attributes[i]
 
-    LOGGER.info(attributes_to_update)
+            cognito_attributes[attribute_dict['Name']] = attribute_dict['Value']
+        
+
+    
+    #Attributes from IdP
+    if body['name']:
+        if 'givenName' in body['name'].keys():
+            scim_attributes['given_name'] = body['name']['givenName']
+        if 'familyName' in body['name'].keys():
+            scim_attributes['family_name'] = body['name']['familyName']
+        if 'middleName' in body['name'].keys():
+            scim_attributes['middle_name'] = body['name']['middleName']
+        if 'formatted' in body['name'].keys():
+            scim_attributes['name'] = body['name']['formatted']
+    if 'emails' in body.keys():
+        scim_attributes['email'] = body['emails'][0]['value']
+    if 'displayName' in body.keys():
+        scim_attributes['preferred_username'] = body['displayName']
+    if 'locale' in body.keys():
+        scim_attributes['locale'] = body['locale']
+    if 'nickName' in body.keys():
+        scim_attributes['nickname'] = body['nickName']
+    if 'addresses' in body.keys():
+        scim_attributes['address'] = body['addresses'][0]['formatted']
+    if 'phoneNumbers' in body.keys():
+        scim_attributes['phone_number'] = body['phoneNumbers'][0]['value']
+    if 'photos' in body.keys():
+        scim_attributes['picture'] = body['photos'][0]['value']
+    if 'profileUrl' in body.keys():
+        scim_attributes['profile'] = body['profileUrl']
+    if 'timezone' in body.keys():
+        scim_attributes['zoneinfo'] = body['timezone']
+    if 'userName' in body.keys():
+        scim_attributes['username'] = body['userName']
 
 # Function to make AdminUpdateUserAttributes and AdminDeleteUserAttributes calls
 def patch_cognito_user(USERPOOL_ID, body, target_user):
@@ -361,22 +377,11 @@ def lambda_handler(event, context):
             }
     if method == 'PUT' or method == 'POST':
 
-        if event['resource'] == '/scim/v2/Users':
-            
-            put_new_cognito_user(USERPOOL_ID, event, body)
+        if event['resource'] == '/scim/v2/Users/{userid+}':
+            user_to_update = find_target_user(USERPOOL_ID, event, body)
 
-            return {
-                "statusCode": "201",
-                "body": "test",
-                "headers": {
-                    "Content-Type": "application/json"
-                }
-            }
+            put_existing_cognito_user(USERPOOL_ID, body, user_to_update)
 
-        elif event['resource'] == '/scim/v2/Users/{userid+}':
-            target_user = find_target_user(USERPOOL_ID, event, body)
-
-            put_existing_cognito_user(USERPOOL_ID, body, target_user)
 
             return {
                 "statusCode": "201",
