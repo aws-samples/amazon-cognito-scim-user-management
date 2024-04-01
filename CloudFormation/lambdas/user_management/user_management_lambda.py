@@ -38,6 +38,7 @@ def get_cognito_user(USERPOOL_ID, event):
     user_details = ''
     paginated_user_list = ''
     query_filter = ''
+    number_of_results = ''
     
     if event['resource'] == '/scim/v2/Users':
         if event['queryStringParameters']:
@@ -121,8 +122,10 @@ def get_cognito_user(USERPOOL_ID, event):
             error.response['Error']['Code'])     # noqa: E501
         raise error
     
-    user_details = user_details[:-1]
-    number_of_results = (len(list(user_details.split('}'))) - 1)
+    if (len(list(user_details.split('}')))) == 1:
+        number_of_results == 1
+    else:
+        number_of_results = (len(list(user_details.split('}'))) - 1)
 
     if number_of_results == 0:
 
@@ -144,7 +147,6 @@ def get_cognito_user(USERPOOL_ID, event):
 
 #Helper function for PUT and PATCH requests. Takes UserID and returns to Cognito username.
 def find_target_user(USERPOOL_ID, event, body):
-    """To update cognito user."""
     user_to_update = ''
         
     if event['pathParameters']['userid']:
@@ -164,7 +166,6 @@ def find_target_user(USERPOOL_ID, event, body):
         
 # Update a user that already exists in Cognito
 def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
-
     attributes_to_update = []
     attributes_to_remove = []
     cognito_attributes = {}
@@ -172,12 +173,6 @@ def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
 
     #Attributes from Cognito
     cognito_list_users_attributes = user_to_update["Users"][0]["Attributes"]
-    LOGGER.info('***Cognito list user attributes***')
-    LOGGER.info(cognito_list_users_attributes)
-    LOGGER.info(type(cognito_list_users_attributes))
-
-    temp_list = len(cognito_list_users_attributes)
-    LOGGER.info(temp_list)
 
     if len(cognito_list_users_attributes) == 1:
         attribute_dict = cognito_list_users_attributes[0]
@@ -192,7 +187,7 @@ def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
         
 
     
-    #Attributes from IdP
+    #Attributes from IdP. userName not a valid attribute.
     if body['name']:
         if 'givenName' in body['name'].keys():
             scim_attributes['given_name'] = body['name']['givenName']
@@ -220,12 +215,24 @@ def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
         scim_attributes['profile'] = body['profileUrl']
     if 'timezone' in body.keys():
         scim_attributes['zoneinfo'] = body['timezone']
-    if 'userName' in body.keys():
-        scim_attributes['username'] = body['userName']
+
+    for key in scim_attributes.keys():
+        try:
+            if scim_attributes[key] == cognito_attributes[key]:
+                pass
+            elif scim_attributes[key] != cognito_attributes[key]:
+                attributes_to_update.append(json.loads('{"Name": "' + key + '", "Value": "' + scim_attributes[key] + '"}'))
+        except KeyError:
+                attributes_to_update.append(json.loads('{"Name": "' + key + '", "Value": "' + scim_attributes[key] + '"}'))
+
+    COGNITO_CLIENT.admin_update_user_attributes(
+        UserPoolId = USERPOOL_ID,
+        Username = user_to_update["Users"][0]["Username"],
+        UserAttributes = attributes_to_update
+    )
 
 # Function to make AdminUpdateUserAttributes and AdminDeleteUserAttributes calls
 def patch_cognito_user(USERPOOL_ID, body, target_user):
-    
     attributes_to_update = []
     attributes_to_remove = []
     
@@ -399,7 +406,7 @@ def lambda_handler(event, context):
         patch_response = patch_response_body(USERPOOL_ID,target_user)
         
         return {
-            'statusCode' : 200,
+            'statusCode' : "200",
             'body': patch_response,
             'headers': {
                 'Content-Type': 'application/json'
@@ -415,7 +422,7 @@ def lambda_handler(event, context):
             )
             
         return {
-            'statusCode': 204,
+            'statusCode': "204",
             'body': '',
             'headers': {
                 'Content-Type': 'application/json'
