@@ -9,6 +9,7 @@ import logging
 import boto3
 import botocore
 import pprint
+import re
 from datetime import datetime
 
 LOGGER = logging.getLogger()
@@ -26,14 +27,14 @@ USERPOOL_ID = os.getenv("USERPOOL_ID")
 IDENTITY_PROVIDER = ''
 if os.getenv("IDENTITY_PROVIDER"):
     IDENTITY_PROVIDER = os.getenv("IDENTITY_PROVIDER") + '_'
-LOGGER.info('IdP is' + IDENTITY_PROVIDER)
+    LOGGER.info('IdP is' + IDENTITY_PROVIDER)
 
 #Available Filters for ListUsers API
 AVAILABLE_FILTERS = ['username', 'email', 'phone_number', 'name', 'given_name', 
-    'family_name', 'preferred_username', 'cognito:user_status', 'status', 'sub']
+    'family_name', 'preferred_username', 'cognito:user_status', 'status', "sub"]
 
 # The fuction to get Cognito users using ListUsers API. Takes optional filter
-def get_cognito_user(USERPOOL_ID, event):
+def get_cognito_user(USERPOOL_ID, event, AVAILABLE_FILTERS):
     get_user_response = ''
     user_details = ''
     paginated_user_list = ''
@@ -46,14 +47,17 @@ def get_cognito_user(USERPOOL_ID, event):
                 query_filter = event['queryStringParameters']['filter']
             except:
                 query_filter = False
-                
-        LOGGER.info("Passing filter %s", query_filter)
-        
         if query_filter:
+            regex_pattern = re.compile('\"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}\"')
+            query_filter = query_filter.split()
+            
+            LOGGER.info("'" + query_filter[0].lower() + "'")
+            #Entra ID may send '?filter=userName eq <UUID>'. This points Cognito to call ListUsers using sub, not username.
+            if regex_pattern.match(query_filter[2]):
+                query_filter[0] = 'sub'
+
+            if query_filter[0].lower() in AVAILABLE_FILTERS:
             # If filter is a supported filter, call ListUsers with the filter
-            if query_filter.split()[0].lower() in AVAILABLE_FILTERS:
-                
-                query_filter = query_filter.split()
                 if IDENTITY_PROVIDER:
                     query_filter = query_filter[0].lower() + ' = "' + IDENTITY_PROVIDER + query_filter[2].strip('"') + '"'
                 else:
@@ -61,26 +65,28 @@ def get_cognito_user(USERPOOL_ID, event):
                     
                 LOGGER.info("Looking for users using the %s filter in Cognito user pool %s", 
                     query_filter, USERPOOL_ID)    # noqa: E501
+                
+
                 paginator = COGNITO_CLIENT.get_paginator('list_users')
                 paginated_user_list = paginator.paginate(
                     UserPoolId = USERPOOL_ID,
                     Filter = query_filter
                 )
-
         # Throw error if filter is unsupported
-            elif query_filter.split()[0].lower() not in AVAILABLE_FILTERS:
+            elif query_filter[0].lower() not in AVAILABLE_FILTERS:
+                LOGGER.info(query_filter[0].lower())
                 LOGGER.info("Found unsupported filter")    # noqa: E501
                 bad_filter= { 
                     "status": "400", 
-                    "response":{"schemas": '["urn:ietf:params:scim:api:messages:2.0:Error"]',
-                    "scimType":"invalidFilter",
-                    "detail":"Request contained an unsupported filter",
-                    "status": "400"
+                    "response": {
+                        "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+                        "scimType":"invalidFilter",
+                        "detail":"Request contained an unsupported filter",
+                        "status": "400"
                         }
-                    }
+                }
                     
                 return bad_filter
-        
         # If no filter provided, list all users
         elif not query_filter:
             LOGGER.info("Listing all users in Cognito user pool %s...", USERPOOL_ID)    # noqa: E501
@@ -90,9 +96,7 @@ def get_cognito_user(USERPOOL_ID, event):
                 PaginationConfig={
                     }
                 )
-
     elif event['resource'] == '/scim/v2/Users/{userid+}':
-        
         user_sub = event['pathParameters']['userid']
 
         paginator = COGNITO_CLIENT.get_paginator('list_users')
@@ -108,9 +112,11 @@ def get_cognito_user(USERPOOL_ID, event):
                     if query_filter:
                         if IDENTITY_PROVIDER:
                             username = user['Username'].lstrip(IDENTITY_PROVIDER)
-                            user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                            user_details += '{"userName": "' + username + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
                         else:
-                            user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                            user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
+                    else:
+                        user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
 
                     LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                         user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
@@ -119,33 +125,39 @@ def get_cognito_user(USERPOOL_ID, event):
     except botocore.exceptions.ClientError as error:
         LOGGER.error("Boto3 client error in user management Lambda while getting Cognito user due to %s",
             error.response['Error']['Code'])     # noqa: E501
-        raise error
 
     if (len(list(user_details.split('}')))) == 1:
-        number_of_results == '1'
-        
+        number_of_results == '1'  
     else:
         number_of_results = (len(list(user_details.split('}'))) - 1)
 
-    if number_of_results == 0:
+    if not number_of_results:
         user_not_found = { 
-                        "status": "404", 
+                        "status": "200", 
                         "response":{
-                            "status": "404", 
-                            "schemas": '["urn:ietf:params:scim:api:messages:2.0:Error"]',
-                            "detail": "User not found",
+                            "totalResults": 0,
+                            "itemsPerPage": 0,
+                            "startIndex": 1,
+                            "schemas": [
+                                "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+                            ],
+                            "Resources": []
                             }
                         }
 
         return user_not_found
-    
+    elif number_of_results == 1:
+        user_details = user_details.lstrip('{').rstrip('},')
+        get_user_response_payload = json.loads('{"schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],' + user_details + '}')
+
+        return get_user_response_payload
     else:
         get_user_response_payload = json.loads('{"totalResults": ' + str(number_of_results) + ', "itemsPerPage": ' + str(number_of_results) + ', "startIndex": 1, "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "Resources": [' + user_details.rstrip(',') + ']}')
 
         return get_user_response_payload
 
 #Helper function for PUT and PATCH requests. Takes UserID and returns to Cognito username.
-def find_target_user(USERPOOL_ID, event, body):
+def find_target_user(USERPOOL_ID, event):
     user_to_update = ''
         
     if event['pathParameters']['userid']:
@@ -155,7 +167,9 @@ def find_target_user(USERPOOL_ID, event, body):
                 Filter = 'sub = "' + event['pathParameters']['userid'] + '"'
             )
             LOGGER.info('ListUser response is %s', user_to_update)
-        
+
+            user_to_update = user_to_update['Users'][0]['Username']
+
             return user_to_update
         except botocore.exceptions.ClientError as error:
             LOGGER.error("Unable to find user associated with UserId %s", 
@@ -163,6 +177,7 @@ def find_target_user(USERPOOL_ID, event, body):
             LOGGER.error("Error: %s", error.response)
             raise error
         
+    
 # Update a user that already exists in Cognito
 def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
     attributes_to_update = []
@@ -233,21 +248,22 @@ def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
 # Function to make AdminUpdateUserAttributes and AdminDeleteUserAttributes calls
 def patch_cognito_user(USERPOOL_ID, body, target_user):
     attributes_to_update = []
-    attributes_to_remove = []
-    
-    LOGGER.info('Body is' + str(body))
+
+    LOGGER.info('Body is ' + str(body))
+
+    LOGGER.info(len(body['Operations']))
     
     for i in range(0, len(body['Operations'])):
         operation = body['Operations'][i]
         
         #Build dictionary to add/update attributes
-        if (operation['op'] == 'replace') or (operation['op'] == 'add'):
+        if operation['op'] == 'add':
+            LOGGER.info('***Add opperations***')
+            LOGGER.info(operation['path'])
+            LOGGER.info(operation['value]'])
             attribute = '{"Name": "' + operation['path'] + '", "Value": "' + operation['value'] + '"}'
+            LOGGER.info(attribute)
             attributes_to_update.append(json.loads(attribute))
-        
-        #Build list to remove attributes
-        elif (operation['op'] == 'remove'):
-            attributes_to_remove.append(operation['path'].lower())
 
         LOGGER.info(attributes_to_update)
 
@@ -257,14 +273,7 @@ def patch_cognito_user(USERPOOL_ID, body, target_user):
                 Username = target_user,
                 UserAttributes = attributes_to_update
                 )
-    
-    # Call AdminDeleteUserAttributes if remove operation were inclded in PATCH payload
-    if attributes_to_remove:
-        COGNITO_CLIENT.admin_delete_user_attributes(
-            UserPoolId = USERPOOL_ID,
-            Username = target_user,
-            UserAttributeNames = attributes_to_remove)
-
+         
 # Helper function to create JSON response to patch_cognito_user
 def patch_response_body(USERPOOL_ID,target_user):
     
@@ -350,7 +359,7 @@ def lambda_handler(event, context):
     
     # Get method user management action
     if method == 'GET':
-        response_body = get_cognito_user(USERPOOL_ID, event)
+        response_body = get_cognito_user(USERPOOL_ID, event, AVAILABLE_FILTERS)
         LOGGER.info(response_body)
         
         if 'response' in response_body.keys():
@@ -364,7 +373,7 @@ def lambda_handler(event, context):
                         }
                     }
         
-            elif response_body['response']['detail'] == 'User not found':
+            elif response_body['response']['totalResults'] == 0:
                 return {
                     'statusCode': response_body['status'],
                     'body': json.dumps(response_body),
@@ -398,7 +407,9 @@ def lambda_handler(event, context):
             }
 
     if method == 'PATCH':
-        target_user = find_target_user(USERPOOL_ID, body)
+        body = json.loads(event['body'])
+
+        target_user = find_target_user(USERPOOL_ID, event)
         
         patch_cognito_user(USERPOOL_ID, body, target_user)
         
