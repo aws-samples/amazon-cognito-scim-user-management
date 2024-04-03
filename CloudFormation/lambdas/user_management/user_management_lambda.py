@@ -8,7 +8,6 @@ import json
 import logging
 import boto3
 import botocore
-import pprint
 import re
 from datetime import datetime
 
@@ -248,31 +247,46 @@ def put_existing_cognito_user(USERPOOL_ID, body, user_to_update):
 # Function to make AdminUpdateUserAttributes and AdminDeleteUserAttributes calls
 def patch_cognito_user(USERPOOL_ID, body, target_user):
     attributes_to_update = []
-
+    look_up = {'name.givenName': 'given_name', 'name.familyName': 'family_name', 'name.middleName': 'middle_name', 'name.formatted': 'name',
+                   'test': 'email', 'displayName': 'preferred_username', 'nickName': 'nickname', 'addresses[type eq "work"].streetAddress': 'address', 
+                   'phoneNumbers[type eq "work"].value': 'phone_number', 'photos': 'picture', 'profileUrl': 'profile', 'zoneinfo': 'timezone'}
+    
     LOGGER.info('Body is ' + str(body))
 
     LOGGER.info(len(body['Operations']))
     
-    for i in range(0, len(body['Operations'])):
+    for i in range(0, (len(body['Operations']) -1)):
+        temp_dict = {}
+
         operation = body['Operations'][i]
-        
-        #Build dictionary to add/update attributes
-        if operation['op'] == 'add':
+
+        #Make a lookup table to map SCIM attributes to OIDC attributes
+        if operation['op'].lower() == 'add':
             LOGGER.info('***Add opperations***')
             LOGGER.info(operation['path'])
-            LOGGER.info(operation['value]'])
-            attribute = '{"Name": "' + operation['path'] + '", "Value": "' + operation['value'] + '"}'
-            LOGGER.info(attribute)
-            attributes_to_update.append(json.loads(attribute))
+            LOGGER.info(operation['value'])
+
+            if operation['path'] in look_up.keys():
+                LOGGER.info('***Opration path***')
+                LOGGER.info(operation['path'])
+
+                temp_dict['Name'] = look_up[operation['path']]
+                temp_dict['Value'] = operation['value']
+                LOGGER.info(temp_dict)
+
+                attributes_to_update.append(temp_dict)
+            
+            elif operation['path'] not in look_up.keys():
+                pass
 
         LOGGER.info(attributes_to_update)
 
     # Call AdminUpdateUserAttributes if attributes were listed with add or replace operations
-        COGNITO_CLIENT.admin_update_user_attributes(
-                UserPoolId = USERPOOL_ID,
-                Username = target_user,
-                UserAttributes = attributes_to_update
-                )
+    COGNITO_CLIENT.admin_update_user_attributes(
+            UserPoolId = USERPOOL_ID,
+            Username = target_user,
+            UserAttributes = attributes_to_update
+            )
          
 # Helper function to create JSON response to patch_cognito_user
 def patch_response_body(USERPOOL_ID,target_user):
