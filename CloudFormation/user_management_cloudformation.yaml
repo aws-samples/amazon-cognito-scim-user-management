@@ -22,6 +22,8 @@ Metadata:
     ParameterLabels:
       AmazonCognitoUserPoolId:
         default: Enter your Amazon Cognito User Pool Id
+      Idp:
+        default: What is the IdP that federates into your User Pool (optional)
       ApiKeyLength:
         default: Enter the length of the API key to be used for making SCIM calls
       CodeBucket:
@@ -60,6 +62,7 @@ Resources:
       Environment:
         Variables:
           USERPOOL_ID: !Ref AmazonCognitoUserPoolId
+          IDENTITY_PROVIDER: !Ref Idp
       Code:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref UserManagementCodeObject
@@ -156,6 +159,32 @@ Resources:
       OperationName: Get UserIDs
       ResourceId:
         Ref: SCIMAPIProxyResourceUsers
+      RestApiId:
+        Ref: SCIMProvisioningAPIGW
+      RequestParameters:
+        method.request.path.proxy: true
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref SCIMAuthorizer
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          'Fn::Join':
+            - ''
+            - - 'arn:'
+              - Ref: 'AWS::Partition'
+              - ':apigateway:'
+              - Ref: 'AWS::Region'
+              - ':lambda:path/2015-03-31/functions/'
+              - !GetAtt SCIMUserManagement.Arn
+              - /invocations
+  SCIMAPIMethodUserGet:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: PATCH
+      OperationName: Get specific user
+      ResourceId:
+        Ref: SCIMAPIProxyResourceUserID
       RestApiId:
         Ref: SCIMProvisioningAPIGW
       RequestParameters:
@@ -287,6 +316,7 @@ Resources:
     DependsOn:
       - SCIMAPIMethodUserDelete
       - SCIMAPIMethodGet
+      - SCIMAPIMethodGetPatch
       - SCIMAPIMethodUserPatch
       - SCIMAPIMethodUserPut
       - SCIMAPIProxyResourceUserID
