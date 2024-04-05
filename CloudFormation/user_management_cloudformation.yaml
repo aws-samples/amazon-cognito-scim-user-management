@@ -11,6 +11,7 @@ Metadata:
           default: SCIM Configuration on AWS
         Parameters:
           - AmazonCognitoUserPoolId
+          - FederationIdP
           - ApiKeyLength
       - Label:
           default: Artifact details for Lambda function provisioning
@@ -22,7 +23,7 @@ Metadata:
     ParameterLabels:
       AmazonCognitoUserPoolId:
         default: Enter your Amazon Cognito User Pool Id
-      Idp:
+      FederationIdP:
         default: What is the IdP that federates into your User Pool (optional)
       ApiKeyLength:
         default: Enter the length of the API key to be used for making SCIM calls
@@ -36,6 +37,8 @@ Metadata:
         default: Zip file that cotains the API Key for IDP Authorization Lambda code.
 Parameters:
   AmazonCognitoUserPoolId:
+    Type: String
+  FederationIdP:
     Type: String
   ApiKeyLength:
     Type: Number
@@ -62,7 +65,7 @@ Resources:
       Environment:
         Variables:
           USERPOOL_ID: !Ref AmazonCognitoUserPoolId
-          IDENTITY_PROVIDER: !Ref Idp
+          IDENTITY_PROVIDER: !Ref FederationIdP
       Code:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref UserManagementCodeObject
@@ -181,7 +184,7 @@ Resources:
   SCIMAPIMethodUserGet:
     Type: 'AWS::ApiGateway::Method'
     Properties:
-      HttpMethod: PATCH
+      HttpMethod: GET
       OperationName: Get specific user
       ResourceId:
         Ref: SCIMAPIProxyResourceUserID
@@ -256,6 +259,7 @@ Resources:
               - ':lambda:path/2015-03-31/functions/'
               - !GetAtt SCIMUserManagement.Arn
               - /invocations
+          
   SCIMAPIMethodUserDelete:
     Type: 'AWS::ApiGateway::Method'
     Properties:
@@ -316,7 +320,7 @@ Resources:
     DependsOn:
       - SCIMAPIMethodUserDelete
       - SCIMAPIMethodGet
-      - SCIMAPIMethodGetPatch
+      - SCIMAPIMethodUserGet
       - SCIMAPIMethodUserPatch
       - SCIMAPIMethodUserPut
       - SCIMAPIProxyResourceUserID
@@ -337,10 +341,17 @@ Resources:
   APIKeyParameterStore:
     Type: 'AWS::SSM::Parameter'
     Properties:
-      Name: /cognito/scim-integration/api-token
+      Name: 
+        !Join
+          - ''
+          - - /cognito/scim-integration/
+            - !Ref SCIMProvisioningAPIGW
+            - /api-token
       Description: The SSM parameter name for the API gateway API key.
       Type: StringList
       Value: default
+    DependsOn:
+      - SCIMProvisioningAPIGW
   SCIMProvisioningAPIGWAnyAPIPermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
