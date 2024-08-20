@@ -52,6 +52,10 @@ Parameters:
   APIKeyGenerationCodeObject:
     Type: String
 Resources:
+  KmsKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: 'Key used to encrypt SCIM Lambda environment variables'
   SCIMUserManagement:
     Type: 'AWS::Lambda::Function'
     Properties:
@@ -61,6 +65,8 @@ Resources:
       MemorySize: 512
       Timeout: 30
       Role: !GetAtt SCIMUserManagementExecutionRole.Arn
+      KmsKeyArn: !GetAtt KmsKey.Arn
+      ReservedConcurrentExecutions: 100
       Description: AWS Lambda function for SCIM user management
       Environment:
         Variables:
@@ -70,6 +76,7 @@ Resources:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref UserManagementCodeObject
     DependsOn:
+      - KmsKey
       - SCIMUserManagementExecutionRole
   SCIMAuthorizerLambda:
     Type: 'AWS::Lambda::Function'
@@ -80,6 +87,8 @@ Resources:
       MemorySize: 512
       Timeout: 30
       Role: !GetAtt SCIMAuthorizerLambdaExecutionRole.Arn
+      KmsKeyArn: !GetAtt KmsKey.Arn
+      ReservedConcurrentExecutions: 100
       Description: AWS Lambda authorizer for API Gateway
       Code:
         S3Bucket: !Ref CodeBucket
@@ -87,6 +96,8 @@ Resources:
       Environment:
         Variables:
           PARAMETER_NAME: !Ref APIKeyParameterStore
+    DependsOn:
+      - KmsKey
   APIKeyGenerationLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
@@ -96,6 +107,8 @@ Resources:
       MemorySize: 512
       Timeout: 30
       Role: !GetAtt BasicLambdaExecutionRole.Arn
+      KmsKeyArn: !GetAtt KmsKey.Arn
+      ReservedConcurrentExecutions: 100
       Description: Custom Resource to create the API Key
       Code:
         S3Bucket: !Ref CodeBucket
@@ -103,6 +116,8 @@ Resources:
       Environment:
         Variables:
           PARAMETER_NAME: !Ref APIKeyParameterStore
+    DependsOn:
+      - KmsKey
   SCIMAuthorizer:
     Type: 'AWS::ApiGateway::Authorizer'
     Properties:
