@@ -16,7 +16,7 @@ LOGGER = logging.getLogger()
 If you need to debug code, change logging.INFO to logging.DEBUG. !!NOTE!! This may print sensitive information.
 It is not recommended to use logging.DEBUG in production environments.
 '''
-LOGGER.setLevel('DEBUG')
+LOGGER.setLevel('INFO')
 COGNITO_CLIENT = boto3.client("cognito-idp")
 
 # Environment variaables
@@ -26,7 +26,7 @@ USERPOOL_ID = os.getenv("USERPOOL_ID")
 IDENTITY_PROVIDER = ''
 if os.getenv("IDENTITY_PROVIDER"):
     IDENTITY_PROVIDER = os.getenv("IDENTITY_PROVIDER") + '_'
-    LOGGER.info('IdP is' + IDENTITY_PROVIDER)
+    LOGGER.debug('IdP is' + IDENTITY_PROVIDER)
 
 #Available Filters for ListUsers API
 AVAILABLE_FILTERS = ['username', 'email', 'phone_number', 'name', 'given_name', 
@@ -50,7 +50,7 @@ def get_cognito_user(USERPOOL_ID, event, AVAILABLE_FILTERS):
             regex_pattern = re.compile('\"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}\"')
             query_filter = query_filter.split()
             
-            LOGGER.info("'" + query_filter[0].lower() + "'")
+            LOGGER.debug("'" + query_filter[0].lower() + "'")
             #Entra ID may send '?filter=userName eq <UUID>'. This points Cognito to call ListUsers using sub, not username.
             if regex_pattern.match(query_filter[2]):
                 query_filter[0] = 'sub'
@@ -73,7 +73,7 @@ def get_cognito_user(USERPOOL_ID, event, AVAILABLE_FILTERS):
                 )
         # Throw error if filter is unsupported
             elif query_filter[0].lower() not in AVAILABLE_FILTERS:
-                LOGGER.info(query_filter[0].lower())
+                LOGGER.debug(query_filter[0].lower())
                 LOGGER.info("Found unsupported filter")    # noqa: E501
                 bad_filter= { 
                     "status": "400", 
@@ -117,7 +117,8 @@ def get_cognito_user(USERPOOL_ID, event, AVAILABLE_FILTERS):
                     else:
                         user_details += '{"userName": "' + user['Username'] + '", "id": "' + user['Attributes'][0]['Value'] + '", "externalId": "' + user['Attributes'][0]['Value'] + '", "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"], "active": ' + str(user['Enabled']).lower() + '},'
 
-                    LOGGER.info("Found user %s (user id ['%s']) in Cognito user pool %s.", 
+                    LOGGER.info("Found user that matched query filter in Cognito user pool %s", USERPOOL_ID)
+                    LOGGER.debug("Found user %s (user id ['%s']) in Cognito user pool %s.", 
                         user['Username'], user['Attributes'][0]['Value'], USERPOOL_ID)    # noqa: E501
 
 
@@ -165,7 +166,7 @@ def find_target_user(USERPOOL_ID, event):
                 UserPoolId = USERPOOL_ID, 
                 Filter = 'sub = "' + event['pathParameters']['userid'] + '"'
             )
-            LOGGER.info('ListUser response is %s', user_to_update)
+            LOGGER.debug('ListUser response is %s', user_to_update)
 
             user_to_update = user_to_update['Users'][0]['Username']
 
@@ -251,9 +252,8 @@ def patch_cognito_user(USERPOOL_ID, body, target_user):
                    'test': 'email', 'displayName': 'preferred_username', 'nickName': 'nickname', 'addresses[type eq "work"].streetAddress': 'address', 
                    'phoneNumbers[type eq "work"].value': 'phone_number', 'photos': 'picture', 'profileUrl': 'profile', 'zoneinfo': 'timezone'}
     
-    LOGGER.info('Body is ' + str(body))
-
-    LOGGER.info(len(body['Operations']))
+    LOGGER.info('Patching users')
+    LOGGER.debug('Body is ' + str(body))
     
     for i in range(0, (len(body['Operations']) -1)):
         temp_dict = {}
@@ -262,13 +262,13 @@ def patch_cognito_user(USERPOOL_ID, body, target_user):
 
         #Make a lookup table to map SCIM attributes to OIDC attributes
         if operation['op'].lower() == 'add':
-            LOGGER.info('***Add opperations***')
-            LOGGER.info(operation['path'])
-            LOGGER.info(operation['value'])
+            LOGGER.debug('***Add opperations***')
+            LOGGER.debug(operation['path'])
+            LOGGER.debug(operation['value'])
 
             if operation['path'] in look_up.keys():
-                LOGGER.info('***Opration path***')
-                LOGGER.info(operation['path'])
+                LOGGER.debug('***Opration path***')
+                LOGGER.debug(operation['path'])
 
                 temp_dict['Name'] = look_up[operation['path']]
                 temp_dict['Value'] = operation['value']
@@ -361,9 +361,9 @@ def patch_response_body(USERPOOL_ID,target_user):
 # Main Lambda function
 def lambda_handler(event, context):
     """The handler for the user management."""
-    LOGGER.info("******************************************")
-    LOGGER.info("Received event is %s", json.dumps(event))
-    LOGGER.info("Received context is %s", context)
+    LOGGER.debug("******************************************")
+    LOGGER.debug("Received event is %s", json.dumps(event))
+    LOGGER.debug("Received context is %s", context)
     body = ''
     method = event['httpMethod']
     
@@ -374,7 +374,7 @@ def lambda_handler(event, context):
     # Get method user management action
     if method == 'GET':
         response_body = get_cognito_user(USERPOOL_ID, event, AVAILABLE_FILTERS)
-        LOGGER.info(response_body)
+        LOGGER.debug(response_body)
         
         if 'response' in response_body.keys():
             if 'scimType' in response_body['response'].keys():
