@@ -33,23 +33,16 @@ Metadata:
         default: Zip file that contains the User management Lambda code.
       AuthorizerCodeObject:
         default: Zip file that contains the Lambda authorizer code.
-      APIKeyGenerationCodeObject:
-        default: Zip file that cotains the API Key for IDP Authorization Lambda code.
 Parameters:
   AmazonCognitoUserPoolId:
     Type: String
   FederationIdP:
     Type: String
-  ApiKeyLength:
-    Type: Number
-    Default: 32
   CodeBucket:
     Type: String
   UserManagementCodeObject:
     Type: String
   AuthorizerCodeObject:
-    Type: String
-  APIKeyGenerationCodeObject:
     Type: String
 Resources:
   KmsKey:
@@ -66,7 +59,6 @@ Resources:
       Timeout: 30
       Role: !GetAtt SCIMUserManagementExecutionRole.Arn
       KmsKeyArn: !GetAtt KmsKey.Arn
-      ReservedConcurrentExecutions: 100
       Description: AWS Lambda function for SCIM user management
       Environment:
         Variables:
@@ -88,7 +80,6 @@ Resources:
       Timeout: 30
       Role: !GetAtt SCIMAuthorizerLambdaExecutionRole.Arn
       KmsKeyArn: !GetAtt KmsKey.Arn
-      ReservedConcurrentExecutions: 100
       Description: AWS Lambda authorizer for API Gateway
       Code:
         S3Bucket: !Ref CodeBucket
@@ -96,26 +87,6 @@ Resources:
       Environment:
         Variables:
           SECRET_ARN: !Ref APIKeySecretsManager
-    DependsOn:
-      - KmsKey
-  APIKeyGenerationLambda:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: !Sub '${AWS::StackName}-Apikeylambda'
-      Handler: custom_resource_lambda.lambda_handler
-      Runtime: python3.9
-      MemorySize: 512
-      Timeout: 30
-      Role: !GetAtt BasicLambdaExecutionRole.Arn
-      KmsKeyArn: !GetAtt KmsKey.Arn
-      ReservedConcurrentExecutions: 100
-      Description: Custom Resource to create the API Key
-      Code:
-        S3Bucket: !Ref CodeBucket
-        S3Key: !Ref APIKeyGenerationCodeObject
-      Environment:
-        Variables:
-          PARAMETER_NAME: !Ref APIKeyParameterStore
     DependsOn:
       - KmsKey
   SCIMAuthorizer:
@@ -273,8 +244,7 @@ Resources:
               - Ref: 'AWS::Region'
               - ':lambda:path/2015-03-31/functions/'
               - !GetAtt SCIMUserManagement.Arn
-              - /invocations
-          
+              - /invocations         
   SCIMAPIMethodUserDelete:
     Type: 'AWS::ApiGateway::Method'
     Properties:
@@ -354,7 +324,7 @@ Resources:
         RateLimit: 500
       UsagePlanName: !Sub '${AWS::StackName}-usageplan'
   APIKeySecretsManager:
-    Type: 'AWS::SecretsManager::Parmeter'
+    Type: 'AWS::SecretsManager::Secret'
     Properties:
       Name: 
         !Join
@@ -364,8 +334,9 @@ Resources:
             - /api-token
       Description: The Secrets Manager secret for the API gateway API key.
       GenerateSecretString:
-        PasswordLength: !Ref ApiKeyLength
-      Value: default
+        IncludeSpace: No
+        ExcludePunctuation: No
+        
     DependsOn:
       - SCIMProvisioningAPIGW
   SCIMProvisioningAPIGWAnyAPIPermission:
@@ -472,45 +443,6 @@ Resources:
           - - 'arn:'
             - !Ref 'AWS::Partition'
             - ':iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
-  BasicLambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      RoleName: !Sub '${AWS::StackName}-ApiKeyLambdaRole'
-      Policies:
-        - PolicyName: !Sub '${AWS::StackName}-SsmPutPolicy'
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Action:
-                  - 'ssm:PutParameter'
-                  - 'ssm:DeleteParameters'
-                Resource: !Join 
-                  - ''
-                  - - 'arn:'
-                    - !Ref 'AWS::Partition'
-                    - ':ssm:'
-                    - !Ref 'AWS::Region'
-                    - ':'
-                    - !Ref 'AWS::AccountId'
-                    - ':'
-                    - parameter
-                    - !Ref APIKeyParameterStore
-                Effect: Allow
-      ManagedPolicyArns:
-        - !Join 
-          - ''
-          - - 'arn:'
-            - !Ref 'AWS::Partition'
-            - ':iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - 'sts:AssumeRole'
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
 Outputs:
   SCIMEndpoint:
     Description: SCIM Endpoint for IdPs

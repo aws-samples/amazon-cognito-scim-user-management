@@ -6,7 +6,7 @@ import logging
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
-API_KEY = os.getenv("SECRET_NAME")
+API_KEY = os.getenv("SECRET_ARN")
 
 
 def lambda_handler(event, context):
@@ -31,9 +31,9 @@ def lambda_handler(event, context):
     # ** Read API key/ Secret key from Parameter store
     
     try:
-        secretsManger = boto3.client('SecretsManager')
-        myParameter = secretsManger.gget_secret_value(SecretId=API_KEY)     # noqa: E501
-        if(token == ((myParameter['Parameter']['Value']))):
+        secretsManager = boto3.client('secretsmanager')
+        myParameter = secretsManager.get_secret_value(SecretId=API_KEY)     # noqa: E501
+        if(token == ((myParameter['SecretString']))):
             policy.allowAllMethods()
         else:
             policy.denyAllMethods()
