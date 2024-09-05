@@ -6,13 +6,10 @@ import logging
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
-PARAMETER_NAME = os.getenv("PARAMETER_NAME")
+API_KEY = os.getenv("SECRET_NAME")
 
 
 def lambda_handler(event, context):
-    LOGGER.info(event)
-    LOGGER.info("Client token: " + event['authorizationToken'])
-    LOGGER.info("Method ARN: " + event['methodArn'])
 
     # Get the Auth token based on IDP
     token = event['authorizationToken'].split(" ")[-1]
@@ -32,12 +29,10 @@ def lambda_handler(event, context):
     # For this demo, the token is verified if it is equal to 'allow' and other values are invalid        # noqa: E501
     
     # ** Read API key/ Secret key from Parameter store
-
-    LOGGER.info("Read API key/ Secret key from Parameter store")
-
+    
     try:
-        ssm = boto3.client('ssm')
-        myParameter = ssm.get_parameter(Name=PARAMETER_NAME, WithDecryption=False)     # noqa: E501
+        secretsManger = boto3.client('SecretsManager')
+        myParameter = secretsManger.gget_secret_value(SecretId=API_KEY)     # noqa: E501
         if(token == ((myParameter['Parameter']['Value']))):
             policy.allowAllMethods()
         else:

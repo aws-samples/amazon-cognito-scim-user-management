@@ -95,7 +95,7 @@ Resources:
         S3Key: !Ref AuthorizerCodeObject
       Environment:
         Variables:
-          PARAMETER_NAME: !Ref APIKeyParameterStore
+          SECRET_ARN: !Ref APIKeySecretsManager
     DependsOn:
       - KmsKey
   APIKeyGenerationLambda:
@@ -353,8 +353,8 @@ Resources:
         BurstLimit: 1000
         RateLimit: 500
       UsagePlanName: !Sub '${AWS::StackName}-usageplan'
-  APIKeyParameterStore:
-    Type: 'AWS::SSM::Parameter'
+  APIKeySecretsManager:
+    Type: 'AWS::SecretsManager::Parmeter'
     Properties:
       Name: 
         !Join
@@ -362,8 +362,9 @@ Resources:
           - - /cognito/scim-integration/
             - !Ref SCIMProvisioningAPIGW
             - /api-token
-      Description: The SSM parameter name for the API gateway API key.
-      Type: StringList
+      Description: The Secrets Manager secret for the API gateway API key.
+      GenerateSecretString:
+        PasswordLength: !Ref ApiKeyLength
       Value: default
     DependsOn:
       - SCIMProvisioningAPIGW
@@ -396,12 +397,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub >-
         arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SCIMProvisioningAPIGW}/authorizers/${SCIMAuthorizer}
-  ApiKeyCustomResource:
-    Type: 'AWS::CloudFormation::CustomResource'
-    Properties:
-      Description: The custom Resource to create Api key and used by Lambda and authorizer.
-      ApiLength: !Ref ApiKeyLength
-      ServiceToken: !GetAtt APIKeyGenerationLambda.Arn
   SCIMUserManagementExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -449,18 +444,8 @@ Resources:
             Version: 2012-10-17
             Statement:
               - Action:
-                  - 'ssm:GetParameter'
-                Resource: !Join 
-                  - ''
-                  - - 'arn:'
-                    - !Ref 'AWS::Partition'
-                    - ':ssm:'
-                    - !Ref 'AWS::Region'
-                    - ':'
-                    - !Ref 'AWS::AccountId'
-                    - ':'
-                    - parameter
-                    - !Ref APIKeyParameterStore
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref APIKeySecretsManager
                 Effect: Allow
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -541,15 +526,5 @@ Outputs:
         - !Ref SCIMAPIStage
         - /scim/v2/
   IdPAPITokenSSMParameter:
-    Description: The Parameter store that contains the IDP Authorization API Key
-    Value: !Join 
-      - ''
-      - - 'arn:'
-        - !Ref 'AWS::Partition'
-        - ':ssm:'
-        - !Ref 'AWS::Region'
-        - ':'
-        - !Ref 'AWS::AccountId'
-        - ':'
-        - parameter
-        - !Ref APIKeyParameterStore
+    Description: The ARN of the API Secret in Secrets manager
+    Value: !Ref APIKeySecretsManager
