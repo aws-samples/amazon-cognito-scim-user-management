@@ -210,10 +210,6 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
 
-## Handling PII
-
-This sample solution handles PII. You should consider your organization's data handling prodcedures when determining what logs to store when using this solution.
-
 ## Legal Disclaimer
 
 You should consider doing your own independent assessment before using the content in this library for production purposes. This may include (amongst other things) testing, securing, and optimizing services and other content, provided in this solution, based on your specific quality control practices and standards.
