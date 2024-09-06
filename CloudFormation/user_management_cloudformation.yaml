@@ -12,14 +12,12 @@ Metadata:
         Parameters:
           - AmazonCognitoUserPoolId
           - FederationIdP
-          - ApiKeyLength
       - Label:
           default: Artifact details for Lambda function provisioning
         Parameters:
           - CodeBucket
           - UserManagementCodeObject
           - AuthorizerCodeObject
-          - APIKeyGenerationCodeObject
     ParameterLabels:
       AmazonCognitoUserPoolId:
         default: Enter your Amazon Cognito User Pool Id

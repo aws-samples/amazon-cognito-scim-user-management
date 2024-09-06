@@ -22,7 +22,7 @@ The following is an example request and response for listing all users:
 ```
 GET https://{API Gateway stage invoke URL}/scim/v2/Users
 User-Agent: Mozilla/5.0
-Authorization: <Systems Manager api-token>
+Authorization: <Secrets Manager api-token>
 ```
 **Example response**
 ```
@@ -75,7 +75,7 @@ The following is an example request and response for filtering users:
 ```
 https://{API Gateway stage invoke URL}/scim/v2/Users?filters=userName eq "alejandro_rosalez"
 User-Agent: Mozilla/5.0
-Authorization: <Systems Manager api-token>
+Authorization: <Secrets Manager api-token>
 ```
 **Example response**
 ```
@@ -119,7 +119,7 @@ The `/Users` endpoint allows `PATCH` requests to update user attrbutes. Supporte
 ```
 PATCH https://{API Gateway stage invoke URL}/scim/v2/Users/{Cognito user ID}
 User-Agent: Mozilla/5.0
-Authorization: <Systems Manager api-token>
+Authorization: <Secrets Manager api-token>
 
 {
     "schemas": [
@@ -186,7 +186,7 @@ The `/Users` endpoint can delete a user with `DELETE` request.
 ```
 DELETE https://{API Gateway stage invoke URL}/scim/v2/Users/{Cognito user ID}
 User-Agent: Mozilla/5.0
-Authorization: <Systems Manager api-token>
+Authorization: <Secrets Manager api-token>
 ```
 
 **Example response**
