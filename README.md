@@ -1,6 +1,6 @@
 ## Amazon Cognito SCIM user management
 
-This sample solution is a lightweight SCIM interface for Cogntio that leverages Amazon API Gateway and Lamda functions to facilitate the following actions: 
+This sample solution is a lightweight SCIM interface for Cognito that leverages Amazon API Gateway and Lambda functions to facilitate the following actions: 
 - List Cognito User IDs
 - Update Cognito users
 - Delete Cognito users
@@ -110,7 +110,7 @@ The `/Users` endpoint allows `PATCH` requests to update user attrbutes. Supporte
 - Any writable value configured in the user pool can be modified 
 
 >[!TIP]
-> To verify an attribute which must be verified in the same API request, you must include the `email_verified` or `phone_number_verfified` attribute with a value of `"true"`. This will not send a verification message to the updated user.
+> To verify an attribute which must be verified in the same API request, you must include the `email_verified` or `phone_number_verified` attribute with a value of `"true"`. This will not send a verification message to the updated user.
 
 >[!NOTE]
 >`PATCH` operations currently respond only with populated user attributes that are included in the [User Resource Schma](https://datatracker.ietf.org/doc/html/rfc7643#section-4.1) from the SCIM Core Schema RFC (RFC-7643). This means that all user attributes may not be returned, especially any custom attributes defined in the user pool.
