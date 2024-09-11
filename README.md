@@ -197,11 +197,6 @@ Content-Type: application/json
 x-amzn-RequestId: a1b2c3d4-5678-90ab-cdef-EXAMPLEbbbbb
 ```
 
-TODO: 
-- Project description
-- Architectural diagram
-- Limitations
-
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
