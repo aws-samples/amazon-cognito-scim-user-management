@@ -8,6 +8,13 @@ This sample solution is a lightweight SCIM interface for Cognito that leverages 
 >[!IMPORTANT]
 > This solution currently does not **create** Cognito users. This is because Cognito supports just-in-time (JIT) user creation by default.
 
+## Deployment
+
+1. Download the repo
+1. Create an S3 bucket and add the .zip files `user_management_lambda.zip` and `lambda authorizer.zip` into the bucket
+1. Import `user_management_cloudformation.yaml` into CloudFormation. Enter the parameters requested by the template.
+1. Retrieve the API key from AWS Secrets Manager
+1. Provide the API key and SCIM endpoint URL to your IdP's SCIM service (or you can make your own API calls using cURL or similar)
 ## Supported operations
 
 ### GET requests
